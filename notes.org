@@ -1,0 +1,45 @@
+* What's The Plan?
+- [X] let's "destruction" first
+- then let's "advice"
+  + [ ] let's get a debugger working under wine so we can see stuff
+  + [ ] let's build the trampoline for foo "manually" i.e. no disasm
+  + [ ] then let's try to do it with capstone or something
+- other secret operations
+
+* What is "destruction"?
+Say we have a function:
+#+begin_src c
+int foo(int x, int y);
+#+end_src
+And we want to replace it with
+#+begin_src c
+int bar(int x, int y);
+#+end_src
+All we gotta do is write a jump to bar at foo
+Caveat 1: we gotta make sure that bar follows the same calling convention
+Caveat 2: this OBLITERATES foo - we can no longer use the original
+* What is "advice"?
+What if we want to keep foo around?
+Still write a jump at the start of foo to bar
+But we also build a new function called the trampoline
+The trampoline reconstructs the instructions that were obliterated by the jump
+And then jumps back to the part of foo right after the jump
+
+What makes this thing hard? Isn't it just easy peasy do the above?
+Caveat 1: what are we overwriting
+say we need to put 5 bytes for a jump at the start of foo
+imagine the first instruction in foo is 4 bytes
+and the second instruction is 6 bytes
+the problem is: how do we know how many bytes to put in the trampoline?
+on nice architectures like ARM this is easy :) :) :)
+on x86 this is HELLLLLLLLLL!!!!!!!!!!!
+we need to decode instructions to know where the next instruction starts
+
+Caveat 2:
+i feel like instructionpointer-relative stuff is scary
+
+Caveat 3:
+??????? unknown additional complexity ???????
+
+* The "other"
+- how do we debug under wine

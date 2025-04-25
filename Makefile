@@ -1,27 +1,27 @@
 CC = x86_64-w64-mingw32-gcc
 CC32 = i686-w64-mingw32-gcc
-CFLAGS_TEST = -Wall -g
-CFLAGS_INJECT = -Wall -g -lcapstone
+CXX32 = i686-w64-mingw32-g++
+CFLAGS_INJECT = -Wall -g -lcapstone -L. -limgui -Iheaders/ -Iheaders/windows/ -Iimgui/dcimgui/ -Iimgui/dcimgui/backends/ -Iimgui/imgui/
+CFLAGS_IMGUI = -Iimgui/imgui/ -Iimgui/dcimgui/ -Iimgui/imgui/backends/
 
-.PHONY: run debug
+.PHONY: all clean run
 
-test.exe: test.c
-	$(CC) $< $(CFLAGS_TEST) -L. -ldinput8 -ldxguid -o $@
+all: inject_lamulana.dll
 
-test32.exe: test.c
-	$(CC32) $< $(CFLAGS_TEST) -L. -ldinput8 -ldxguid -o $@
+# inject.dll: inject.c crook.h
+# 	$(CC) -DCROOK_64BIT=1 -DTRAMPOLINE=trampoline_64 -DFOO=0x00000001400014b4 $< $(CFLAGS_INJECT) -shared -o $@
 
-inject.dll: inject.c
-	$(CC) -DTRAMPOLINE=trampoline_64 $< $(CFLAGS_INJECT) -shared -o $@
+inject_lamulana.dll: inject.c crook.h
+	$(CC32) -DTRAMPOLINE=trampoline_32 -DFOO=0x0040147c $< -L$(CAPSTONE32_PATH)/lib $(CFLAGS_INJECT) -shared -o $@
 
-inject32.dll: inject.c
-	$(CC32) -DTRAMPOLINE=trampoline_32 $< -L/nix/store/5pmimd5qj4g1fdzq4i3ky24cp6xc9vj9-capstone-i686-w64-mingw32-5.0.3/lib $(CFLAGS_INJECT) -shared -o $@
+imgui.dll: imgui/dcimgui/dcimgui.cpp imgui/dcimgui/backends/dcimgui_impl_dx9.cpp imgui/imgui/*.cpp imgui/imgui/backends/imgui_impl_dx9.cpp
+	$(CXX32) $^ $(CFLAGS_IMGUI) -shared -o $@
 
-libguy.dll: libguy.c
-	$(CC) $< $(CFLAGS_TEST) -shared -o $@
+imgui.a: imgui/dcimgui/dcimgui.cpp imgui/dcimgui/backends/dcimgui_impl_dx9.cpp imgui/imgui/*.cpp imgui/imgui/backends/imgui_impl_dx9.cpp
+	$(CXX32) $^ $(CFLAGS_IMGUI) -static -nodefaultlibs -fno-exceptions -o $@
 
-run: test.exe
-	wine64 $<
+clean:
+	rm -f inject_lamulana.dll
 
-debug: test.exe
-	wine64 bin/gdbserver.exe 'localhost:31337' $< 
+run: inject_lamulana.dll
+	cd lamulana_runtime && WINEDLLOVERRIDES="dinput8=n,b" wine LaMulanaWin.exe

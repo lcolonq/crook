@@ -36,10 +36,11 @@ void *trampoline_alloc(size_t len) {
     return mem;
 }
 
+#ifndef CROOK_64BIT
 void destructive_hook_32(void *target, void *hook) {
     uint8_t template[] = {0xe9, 0x00, 0x00, 0x00, 0x00};
     size_t len = sizeof(template);
-    int64_t diff = (int64_t) hook - ((int64_t) target + (int64_t) len);
+    int32_t diff = (int32_t) hook - ((int32_t) target + (int32_t) len);
     if (diff > INT32_MAX || diff < INT32_MIN) panic("it's too far");
     uint32_t offset = (uint32_t) diff;
     *((uint32_t *)(template+1)) = offset;
@@ -56,8 +57,8 @@ void *build_trampoline_32(void *target, size_t len) {
     };
     size_t tlen = sizeof(template);
     uint8_t *ret = trampoline_alloc(len + tlen);
-    uint64_t toff = (uint64_t) target + len;
-    int64_t diff = (int64_t) toff - ((int64_t) ret + (int64_t) len + (int64_t) tlen);
+    uint32_t toff = (uint32_t) target + len;
+    int32_t diff = (int32_t) toff - ((int32_t) ret + (int32_t) len + (int32_t) tlen);
     *((uint32_t *)(template+1)) = diff;
     uint8_t *tbytes = (uint8_t *) target;
     for (int i = 0; i < len; ++i) {
@@ -112,7 +113,8 @@ uint8_t TRAMPOLINE_TEMPLATE_32[] = {
 size_t TRAMPOLINE_TEMPLATE_LEN_32 = sizeof(TRAMPOLINE_TEMPLATE_32);
 void install_trampoline_hook_32(void *target, void *hook) {
     unprotect(target, TRAMPOLINE_TEMPLATE_LEN_32);
-    uint64_t offset = (uint64_t) hook;
+    int32_t diff = (int32_t) hook - ((int32_t) target + (int32_t) TRAMPOLINE_TEMPLATE_LEN_32);
+    uint32_t offset = (uint32_t) diff;
     uint8_t *tbytes = (uint8_t *) target;
     for (int i = 0; i < TRAMPOLINE_TEMPLATE_LEN_32; ++i) {
         tbytes[i] = TRAMPOLINE_TEMPLATE_32[i];
@@ -126,7 +128,9 @@ void *trampoline_32(void *target, void *hook) {
     install_trampoline_hook_32(target, hook);
     return ret;
 }
+#endif
 
+#ifdef CROOK_64BIT
 void destructive_hook_64(void *target, void *hook) {
     // push high bytes of address
     // push low bytes of address
@@ -230,3 +234,4 @@ void *trampoline_64(void *target, void *hook) {
     install_trampoline_hook_64(target, hook);
     return ret;
 }
+#endif

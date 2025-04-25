@@ -13,6 +13,9 @@
     in {
       devShells.x86_64-linux.default = pkgs.mkShell {
         WINEPREFIX="/home/llll/src/crook/wineprefix";
+        WINE_PATH="${pkgs.wineWowPackages.stable}";
+        CAPSTONE32_PATH="${pkgs.pkgsCross.mingw32.capstone}";
+        MINGW32_PATH="${pkgs.pkgsCross.mingw32.buildPackages.gcc}";
         buildInputs = [
           pkgs.wineWowPackages.stable
           pkgs.gnumake
@@ -22,6 +25,7 @@
           pkgs.pkgsCross.mingw32.buildPackages.gcc
           pkgs.pkgsCross.mingw32.capstone
           pkgs.yasm
+          pkgs.ghidra
         ];
       };
     };
