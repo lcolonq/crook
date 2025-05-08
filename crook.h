@@ -30,6 +30,56 @@ void unprotect(void *target, size_t len) {
     }
 }
 
+typedef int32_t signature[];
+#define SIGNATURE_WILDCARD -1
+#define SIGNATURE_END -42
+size_t signature_len(signature sig) {
+    size_t i = 0;
+    for (; sig[i] != SIGNATURE_END; ++i);
+    return i;
+}
+bool match_signature(signature sig, uint8_t *buf) {
+    for (size_t i = 0; sig[i] != SIGNATURE_END; ++i) {
+        if (sig[i] >= 0 && sig[i] <= 0xff) {
+            uint8_t expected = (uint8_t) sig[i];
+            if (expected != buf[i]) return false;
+        } else switch (sig[i]) {
+            case SIGNATURE_WILDCARD: break;
+            default:
+                panic("unknown signature matcher %d", sig[i]);
+                break;
+        }
+    }
+    return true;
+}
+size_t find_signature(void *out[], size_t outlen, signature sig) {
+    HMODULE hmod = GetModuleHandle(NULL);
+    IMAGE_DOS_HEADER *dos_header = (IMAGE_DOS_HEADER *) hmod;
+    int32_t offset = dos_header->e_lfanew;
+    IMAGE_NT_HEADERS *nt_headers = (IMAGE_NT_HEADERS *) ((uint8_t *) hmod + offset);
+    printf("the pe signature: %s\n", (char *) &(nt_headers->Signature));
+    printf("the signature length: %u\n", signature_len(sig));
+    size_t siglen = signature_len(sig);
+    size_t outidx = 0;
+
+    for (int i = 0; i < nt_headers->FileHeader.NumberOfSections; ++i) {
+        IMAGE_SECTION_HEADER *sec = IMAGE_FIRST_SECTION(nt_headers) + i;
+        uint8_t *addr = (uint8_t *) hmod + sec->VirtualAddress;
+        printf("section %d: %p (size %ld)\n", i, addr, sec->SizeOfRawData);
+        size_t maxoff = sec->SizeOfRawData - siglen;
+        for (size_t off = 0; off < maxoff; ++off) {
+            if (match_signature(sig, addr + off)) {
+                printf("found match at: %p\n", addr + off);
+                if (outidx < outlen) {
+                    out[outidx] = addr + off;
+                    outidx += 1;
+                    if (outidx >= outlen) return outidx;
+                }
+            }
+        }
+    }
+}
+
 void *trampoline_alloc(size_t len) {
     void *mem = calloc(len, 1);
     unprotect(mem, len);

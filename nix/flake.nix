@@ -25,7 +25,7 @@
           pkgs.pkgsCross.mingw32.buildPackages.gcc
           pkgs.pkgsCross.mingw32.capstone
           pkgs.yasm
-          pkgs.ghidra
+          pkgs.scanmem
         ];
       };
     };
